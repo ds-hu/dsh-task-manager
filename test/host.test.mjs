@@ -21,11 +21,14 @@ import {
 } from '../lib/api.js';
 import { createHistory, MAX_FOLD_SECONDS } from '../lib/history.js';
 import {
+  collectServiceEnrichment,
   collectStartupEntries,
   createMetrics,
   GUI_ALLOWLIST,
   normalizeConfig,
   parseDesktopEntry,
+  parseUnitFile,
+  parseUnitFileStates,
   resolveDshVersion,
 } from '../lib/metrics.js';
 import {
@@ -913,6 +916,7 @@ test('metrics.services maps systeminformation rows to the contract', async () =>
     }),
     procfs: fakeProcfs().procfs,
     sleep: async () => {},
+    serviceEnrichment: async () => ({ states: new Map(), descriptions: new Map() }),
   });
   const services = await metrics.services();
   assert.equal(services.ok, true);
@@ -932,6 +936,190 @@ test('metrics.services maps systeminformation rows to the contract', async () =>
   assert.equal(cron.displayName, null);
   assert.equal(cron.startmode, null);
   assert.deepEqual(keys(cron), ['cpu', 'displayName', 'mem', 'name', 'pids', 'running', 'startmode']);
+});
+
+test('parseUnitFile reads Description and whether the unit is enableable', () => {
+  assert.deepEqual(parseUnitFile([
+    '# a comment',
+    '[Unit]',
+    'Description=OpenBSD Secure Shell server',
+    '',
+    '[Service]',
+    'Description=not the unit description',
+    'ExecStart=/usr/sbin/sshd',
+    '',
+    '[Install]',
+    'WantedBy=multi-user.target',
+  ].join('\n')), { description: 'OpenBSD Secure Shell server', installable: true });
+
+  // No [Install] section: systemd reports this unit as `static`.
+  assert.deepEqual(parseUnitFile('[Unit]\nDescription=A static unit\n[Service]\nExecStart=/bin/true\n'), {
+    description: 'A static unit',
+    installable: false,
+  });
+  // An empty WantedBy does not make a unit enableable.
+  assert.deepEqual(parseUnitFile('[Unit]\nDescription=Empty\n[Install]\nWantedBy=\n'), {
+    description: 'Empty',
+    installable: false,
+  });
+  assert.deepEqual(parseUnitFile(''), { description: null, installable: false });
+  assert.deepEqual(parseUnitFile(undefined), { description: null, installable: false });
+});
+
+test('parseUnitFileStates reads systemctl list-unit-files output', () => {
+  const text = [
+    'ssh.service                          enabled         enabled',
+    'cron.service                         disabled        enabled',
+    'dbus.service                         static          -',
+    'foo.service                          masked          -',
+    'getty@.service                       enabled         enabled',
+    'apparmor.service                     enabled         enabled',
+    'not-a-service.target                enabled         enabled',
+    '',
+    'garbage',
+  ].join('\n');
+  const states = parseUnitFileStates(text);
+  assert.equal(states.get('ssh.service'), 'enabled');
+  assert.equal(states.get('cron.service'), 'disabled');
+  assert.equal(states.get('dbus.service'), 'static');
+  assert.equal(states.get('foo.service'), 'masked');
+  assert.equal(states.get('getty@.service'), 'enabled');
+  assert.equal(states.has('not-a-service.target'), false);
+  assert.equal(states.get('apparmor.service'), 'enabled');
+  assert.equal(states.size, 6);
+  assert.equal(parseUnitFileStates('').size, 0);
+  assert.equal(parseUnitFileStates(null).size, 0);
+});
+
+test('collectServiceEnrichment derives unit states and descriptions from unit files', async () => {
+  const directories = new Map([
+    ['/etc/systemd/system', ['ssh.service', 'masked.service', 'multi-user.target.wants']],
+    ['/etc/systemd/system/multi-user.target.wants', ['ssh.service', 'getty@tty1.service']],
+    ['/run/systemd/system', ['runtime.service', 'runtime.target.wants']],
+    ['/run/systemd/system/runtime.target.wants', ['runtime.service']],
+    ['/usr/lib/systemd/system', ['ssh.service', 'cron.service', 'static.service', 'masked.service', 'alias.service', 'real.service', 'getty@.service']],
+    ['/run/systemd/generate', ['generated.service']],
+    ['/lib/systemd/system', []],
+  ]);
+  const files = new Map([
+    ['/etc/systemd/system/ssh.service', '[Unit]\nDescription=OpenSSH server (etc)\n[Install]\nWantedBy=multi-user.target\n'],
+    ['/usr/lib/systemd/system/ssh.service', '[Unit]\nDescription=OpenSSH server (usr)\n[Install]\nWantedBy=multi-user.target\n'],
+    ['/usr/lib/systemd/system/cron.service', '[Unit]\nDescription=Regular background program processing daemon\n[Install]\nWantedBy=multi-user.target\n'],
+    ['/usr/lib/systemd/system/static.service', '[Unit]\nDescription=A static unit\n[Service]\nExecStart=/bin/true\n'],
+    ['/etc/systemd/system/masked.service', '[Unit]\nDescription=Masked unit\n'],
+    ['/usr/lib/systemd/system/masked.service', '[Unit]\nDescription=Masked unit\n'],
+    ['/usr/lib/systemd/system/alias.service', '[Unit]\nDescription=Alias unit\n'],
+    ['/usr/lib/systemd/system/real.service', '[Unit]\nDescription=Real unit\n[Install]\nWantedBy=multi-user.target\n'],
+    ['/usr/lib/systemd/system/getty@.service', '[Unit]\nDescription=Getty on %I\n[Install]\nWantedBy=getty.target\n'],
+    ['/run/systemd/system/runtime.service', '[Unit]\nDescription=Runtime unit\n[Install]\nWantedBy=multi-user.target\n'],
+    ['/run/systemd/generate/generated.service', '[Unit]\nDescription=Generated unit\n'],
+  ]);
+  const links = new Map([
+    ['/etc/systemd/system/masked.service', '/dev/null'],
+    ['/usr/lib/systemd/system/alias.service', '/usr/lib/systemd/system/real.service'],
+    ['/usr/lib/systemd/system/real.service', '/usr/lib/systemd/system/real.service'], // same-name link is not an alias
+  ]);
+  const enrichment = await collectServiceEnrichment({
+    platform: 'linux',
+    unitRoots: ['/etc/systemd/system', '/run/systemd/system', '/usr/lib/systemd/system', '/lib/systemd/system', '/run/systemd/generate'],
+    realpath: (dir) => dir,
+    readdir: (dir) => {
+      if (!directories.has(dir)) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      return directories.get(dir);
+    },
+    readFile: (file) => {
+      if (!files.has(file)) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      return files.get(file);
+    },
+    readlink: (file) => {
+      if (!links.has(file)) throw new Error('EINVAL');
+      return links.get(file);
+    },
+    systemctl: async () => { throw new Error('systemctl should not be needed'); },
+  });
+
+  assert.equal(enrichment.states.get('ssh.service'), 'enabled');
+  assert.equal(enrichment.states.get('cron.service'), 'disabled');
+  assert.equal(enrichment.states.get('static.service'), 'static');
+  assert.equal(enrichment.states.get('masked.service'), 'masked');
+  assert.equal(enrichment.states.get('alias.service'), 'alias');
+  assert.equal(enrichment.states.get('getty@.service'), 'enabled', 'a linked template instance enables the template');
+  assert.equal(enrichment.states.get('runtime.service'), 'enabled-runtime');
+  assert.equal(enrichment.states.get('generated.service'), 'generated');
+  // The /etc definition overrides /usr/lib for both description and state.
+  assert.equal(enrichment.descriptions.get('ssh.service'), 'OpenSSH server (etc)');
+  assert.equal(enrichment.descriptions.get('cron.service'), 'Regular background program processing daemon');
+  assert.equal(enrichment.descriptions.has('real.service'), true);
+});
+
+test('collectServiceEnrichment falls back to systemctl and degrades on non-Linux', async () => {
+  const commands = [];
+  const fallback = await collectServiceEnrichment({
+    platform: 'linux',
+    unitRoots: ['/nonexistent/systemd'],
+    readdir: () => { throw new Error('ENOENT'); },
+    realpath: (dir) => dir,
+    systemctl: async (args) => {
+      commands.push(args);
+      return 'ssh.service enabled enabled\ncron.service disabled enabled\n';
+    },
+  });
+  assert.equal(fallback.states.get('ssh.service'), 'enabled');
+  assert.equal(fallback.states.get('cron.service'), 'disabled');
+  assert.equal(fallback.descriptions.size, 0);
+  assert.deepEqual(commands, [['list-unit-files', '--type=service', '--no-pager', '--no-legend']]);
+
+  const broken = await collectServiceEnrichment({
+    platform: 'linux',
+    unitRoots: ['/nonexistent/systemd'],
+    readdir: () => { throw new Error('ENOENT'); },
+    realpath: (dir) => dir,
+    systemctl: async () => { throw new Error('systemctl: not found'); },
+  });
+  assert.equal(broken.states.size, 0);
+
+  const windows = await collectServiceEnrichment({
+    platform: 'win32',
+    readdir: () => { throw new Error('should not be called'); },
+  });
+  assert.equal(windows.states.size, 0);
+  assert.equal(windows.descriptions.size, 0);
+});
+
+test('metrics.services merges enrichment and falls back to nulls', async () => {
+  const metrics = createMetrics({
+    now: () => 1000,
+    si: fakeSi({
+      services: async () => [
+        { name: 'ssh', running: true, startmode: '', pids: [1], cpu: 0, mem: 0 },
+        { name: 'cron', running: false, startmode: '', pids: [], cpu: 0, mem: 0 },
+      ],
+    }),
+    procfs: fakeProcfs().procfs,
+    sleep: async () => {},
+    serviceEnrichment: async () => ({
+      states: new Map([['ssh.service', 'enabled'], ['cron.service', 'disabled']]),
+      descriptions: new Map([['ssh.service', 'OpenBSD Secure Shell server']]),
+    }),
+  });
+  const services = await metrics.services();
+  const ssh = services.services.find((service) => service.name === 'ssh');
+  assert.equal(ssh.displayName, 'OpenBSD Secure Shell server');
+  assert.equal(ssh.startmode, 'enabled');
+  const cron = services.services.find((service) => service.name === 'cron');
+  assert.equal(cron.displayName, null);
+  assert.equal(cron.startmode, 'disabled');
+
+  const failing = createMetrics({
+    now: () => 1000,
+    si: fakeSi({ services: async () => [{ name: 'ssh', running: true }] }),
+    procfs: fakeProcfs().procfs,
+    sleep: async () => {},
+    serviceEnrichment: async () => { throw new Error('enrichment unavailable'); },
+  });
+  const degraded = await failing.services();
+  assert.equal(degraded.services[0].displayName, null);
+  assert.equal(degraded.services[0].startmode, null);
 });
 
 test('collectStartupEntries reads systemd wants and XDG autostart', () => {
