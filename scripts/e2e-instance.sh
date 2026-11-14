@@ -53,8 +53,14 @@ start_instance() {
   ensure_profile
   stop_instance
   : > "$LOG_FILE"
-  ( cd "$HOME_DIR" && DSH_HOME="$HOME_DIR" NODE_OPTIONS="--max-old-space-size=$HEAP" \
-      nohup dsh --profile web --no-open --host 127.0.0.1 --port "$PORT" >"$LOG_FILE" 2>&1 & echo $! >"$PID_FILE" )
+  # `exec` makes the background job's PID the dsh process itself (not a
+  # subshell), so `stop` can signal the server and release the port.
+  (
+    cd "$HOME_DIR" || exit 1
+    exec nohup env DSH_HOME="$HOME_DIR" NODE_OPTIONS="--max-old-space-size=$HEAP" \
+      dsh --profile web --no-open --host 127.0.0.1 --port "$PORT" >"$LOG_FILE" 2>&1
+  ) &
+  echo $! >"$PID_FILE"
   for _ in $(seq 1 120); do
     if grep -q "token=" "$LOG_FILE" 2>/dev/null; then
       grep -o 'http://[^ ]*token=[A-Za-z0-9_-]*' "$LOG_FILE" | tail -1 > "$URL_FILE"

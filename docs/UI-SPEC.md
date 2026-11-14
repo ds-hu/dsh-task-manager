@@ -76,8 +76,8 @@ column headers 12 px/600, page title 20 px/600, performance values 20 px/300.
 
 ### 进程 (Processes) — default
 
-- Page header: `进程` + a right-aligned `结束任务` button (disabled unless a row is
-  selected) and a refresh icon button.
+- Page header: `进程` only. Refresh lives in the title row and `结束任务` in the
+  bottom status bar (one command per surface, as in Win11 22H2).
 - Table header (32 px, sticky): `名称` (flex), `状态` (88), `CPU` (76), `内存` (104),
   `磁盘` (96), `网络` (88). Numeric headers right-aligned and sortable; show ▲/▼.
   The group header rows show the group totals in the same columns, exactly like
@@ -90,7 +90,8 @@ column headers 12 px/600, page title 20 px/600, performance values 20 px/300.
   Hover tint; selection tint; keyboard focus ring.
 - Child processes: rows whose parent is in the same group are nested one level
   with a 20 px indent and a disclosure chevron on the parent. Expand state is
-  local component state; default expanded for `应用`, collapsed for the others.
+  local component state; all three groups start expanded (Win11 default) and can
+  be collapsed independently.
 - Bottom status bar 38 px: `进程: 209` · `CPU: 43%` · `内存: 62%` · `磁盘: 0%` ·
   `网络: 0 Mbps` on the left, `结束任务` on the right (danger hover). The values
   come from the same snapshot as the table.

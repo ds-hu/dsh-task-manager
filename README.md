@@ -17,9 +17,15 @@ library plus a Linux `/proc` fast path.
 
 | Processes | Performance |
 | --- | --- |
-| ![Processes tab](./docs/screenshots/processes-light.png) | ![Performance tab](./docs/screenshots/performance-light.png) |
-| **Details** | **Dark theme** |
-| ![Details tab](./docs/screenshots/details-light.png) | ![Dark theme](./docs/screenshots/processes-dark.png) |
+| ![Processes tab](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/processes-light.png) | ![Performance tab](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/performance-light.png) |
+| **Details** | **Services** |
+| ![Details tab](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/details-light.png) | ![Services tab](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/services-light.png) |
+| **App history** | **Users** |
+| ![App history tab](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/app-history-light.png) | ![Users tab](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/users-light.png) |
+| **Startup apps** | **Settings** |
+| ![Startup tab](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/startup-light.png) | ![Settings dialog](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/settings-light.png) |
+
+Dark theme: ![Processes in dark theme](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/processes-dark.png)
 
 ## Pages
 
@@ -104,9 +110,9 @@ node test/package.mjs
 End-to-end tests use an isolated DSH instance (never the production profile):
 
 ```bash
-node scripts/e2e-instance.sh restart 3090
-TM_URL="$(node scripts/e2e-instance.sh url)" npx playwright test
-node scripts/e2e-instance.sh stop
+./scripts/e2e-instance.sh restart 3090
+TM_URL="$(./scripts/e2e-instance.sh url)" npx playwright test
+./scripts/e2e-instance.sh stop
 ```
 
 ## License

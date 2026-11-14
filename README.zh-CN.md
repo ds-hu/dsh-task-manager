@@ -16,9 +16,15 @@ MIT 协议库 [`systeminformation`](https://github.com/sebhildebrandt/systeminfo
 
 | 进程 | 性能 |
 | --- | --- |
-| ![进程页](./docs/screenshots/processes-light.png) | ![性能页](./docs/screenshots/performance-light.png) |
-| **详细信息** | **深色主题** |
-| ![详细信息页](./docs/screenshots/details-light.png) | ![深色主题](./docs/screenshots/processes-dark.png) |
+| ![进程页](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/processes-light.png) | ![性能页](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/performance-light.png) |
+| **详细信息** | **服务** |
+| ![详细信息页](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/details-light.png) | ![服务页](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/services-light.png) |
+| **应用历史记录** | **用户** |
+| ![应用历史记录页](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/app-history-light.png) | ![用户页](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/users-light.png) |
+| **启动应用** | **设置** |
+| ![启动应用页](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/startup-light.png) | ![设置对话框](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/settings-light.png) |
+
+深色主题：![深色主题进程页](https://raw.githubusercontent.com/ds-hu/dsh-task-manager/main/docs/screenshots/processes-dark.png)
 
 ## 页面
 
@@ -96,9 +102,9 @@ node test/package.mjs
 端到端测试使用隔离的 DSH 实例（绝不碰生产 profile）：
 
 ```bash
-node scripts/e2e-instance.sh restart 3090
-TM_URL="$(node scripts/e2e-instance.sh url)" npx playwright test
-node scripts/e2e-instance.sh stop
+./scripts/e2e-instance.sh restart 3090
+TM_URL="$(./scripts/e2e-instance.sh url)" npx playwright test
+./scripts/e2e-instance.sh stop
 ```
 
 ## 许可证

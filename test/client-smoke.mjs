@@ -40,11 +40,13 @@ assert.equal(registration.id, '@ds-hu/dsh-task-manager', 'module id is the packa
 const react = {
   createElement: () => null,
   useEffect: () => {},
+  useLayoutEffect: () => {},
   useState: () => [null, () => {}],
   useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot(),
   useCallback: (fn) => fn,
   useMemo: (fn) => fn(),
   useRef: (value) => ({ current: value }),
+  memo: (component) => component,
   Fragment: 'fragment',
 };
 const jsxRuntime = {
@@ -123,5 +125,25 @@ assert.equal(panel.options.id, 'task-manager', 'sidebar id matches the main pane
 assert.equal(typeof panel.options.label, 'function', 'sidebar label is a live thunk');
 assert.equal(panel.options.label(), '任务管理器', 'sidebar label resolves in the active locale');
 assert.equal(typeof panel.component, 'function', 'sidebar entry has an icon component');
+
+// Dictionaries: both locales must be complete for every key.
+const { zh, en: enDict } = await import('../src/client/i18n.js');
+const missingEn = Object.keys(zh).filter((key) => !(key in enDict));
+const missingZh = Object.keys(enDict).filter((key) => !(key in zh));
+assert.deepEqual(missingEn, [], 'every zh key has an en translation');
+assert.deepEqual(missingZh, [], 'every en key has a zh translation');
+
+// Test hooks required by docs/UI-SPEC.md must be present in the generated bundle.
+for (const testid of [
+  'tm-root', 'tm-nav-processes', 'tm-nav-performance', 'tm-nav-app-history',
+  'tm-nav-startup', 'tm-nav-users', 'tm-nav-details', 'tm-nav-services',
+  'tm-process-table', 'tm-process-row', 'tm-process-group', 'tm-end-task',
+  'tm-status-bar', 'tm-search', 'tm-perf-cpu', 'tm-perf-mem', 'tm-perf-disk',
+  'tm-perf-net', 'tm-graph', 'tm-details-table', 'tm-services-table',
+  'tm-users-list', 'tm-startup-table', 'tm-app-history-table', 'tm-settings',
+  'tm-refresh',
+]) {
+  assert.ok(code.includes(`"${testid}"`), `bundle exposes data-testid ${testid}`);
+}
 
 process.stdout.write('client-smoke: ok\n');
