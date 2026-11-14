@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Task Manager",
+    "description": "A Windows 11 style Task Manager in the left sidebar: live CPU, memory, disk and network graphs, processes, users and services."
+  }
+}

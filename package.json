@@ -1,0 +1,87 @@
+{
+  "name": "@ds-hu/dsh-task-manager",
+  "version": "0.1.0",
+  "description": "Windows 11 style Task Manager for the DeepSeek Harness Web GUI: a left-sidebar panel with live CPU, memory, disk, network, processes, users and services.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "locale/*.json",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE",
+    "NOTICE",
+    "docs"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ds-hu/dsh-task-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ds-hu/dsh-task-manager/issues"
+  },
+  "homepage": "https://github.com/ds-hu/dsh-task-manager#readme",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "cordis",
+    "task-manager",
+    "system-monitor",
+    "processes",
+    "performance",
+    "windows-11"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-theme"
+      ]
+    }
+  },
+  "dependencies": {
+    "systeminformation": "^5.33.22"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2"
+  },
+  "scripts": {
+    "build:client": "node scripts/build-client.mjs",
+    "build": "npm run build:client",
+    "test:host": "node --test test/host.test.mjs",
+    "test:mount": "node test/mount-check.mjs",
+    "test:client": "node test/client-smoke.mjs",
+    "test": "npm run test:host && npm run test:mount && npm run test:client",
+    "check": "npm run build && npm test && node test/package.mjs",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run check"
+  },
+  "license": "MIT"
+}

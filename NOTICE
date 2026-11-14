@@ -1,0 +1,23 @@
+@ds-hu/dsh-task-manager
+Copyright (c) 2026 ds-hu contributors
+Licensed under the MIT License (see LICENSE).
+
+This package bundles third-party software. The notices below are provided in
+accordance with their licenses.
+
+--------------------------------------------------------------------------
+systeminformation
+https://github.com/sebhildebrandt/systeminformation
+Copyright (c) 2014-2025 Sebastian Hildebrandt
+License: MIT
+
+The MIT License text is reproduced in LICENSE and applies to this dependency.
+systeminformation is used unmodified as a runtime dependency; it is not
+vendored or patched.
+
+--------------------------------------------------------------------------
+Windows 11 Task Manager is a product of Microsoft Corporation. This project is
+an independent, unofficial interface inspired by its visual design. It is not
+affiliated with, endorsed by, or sponsored by Microsoft. No Microsoft artwork,
+icon, or binary is redistributed: the plugin icon and every glyph are original
+SVG drawn for this project.

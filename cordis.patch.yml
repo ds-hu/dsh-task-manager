@@ -1,0 +1,17 @@
+# The @ds-hu/dsh-task-manager bundle patch.
+#
+# One row: the Host half, which serves /dsh-task-manager/api/* from the Host web
+# server. `name` must be this package's name so the Loader resolves the row (and
+# therefore the code it mounts) from the profile's node_modules; `id` must equal
+# the `name` the Host half exports from lib/index.js, so the row and the plugin
+# are recognizably the same thing. Both parity rules are guarded by
+# test/mount-check.mjs.
+#
+# The plugin publishes no Cordis service, so it sits loose in the Host root
+# realm instead of an `isolate` group. It owns no durable state: every reading
+# is derived from the operating system on demand, so uninstalling leaves
+# nothing behind.
+
+- insert:
+    - id: task-manager
+      name: '@ds-hu/dsh-task-manager'
